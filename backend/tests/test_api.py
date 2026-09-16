@@ -106,6 +106,24 @@ class TestPrompts:
         # NOTE: This assertion will fail due to Bug #2!
         # The updated_at should be different from original
         assert data["updated_at"] != original_updated_at  # Uncomment after fix
+
+    def test_patch_prompt_partial(self, client: TestClient, sample_prompt_data):
+        # Create a prompt first
+        create_response = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_response.json()["id"]
+        
+        # Update ONLY the title via PATCH
+        response = client.patch(f"/prompts/{prompt_id}", json={"title": "Patched Title"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["title"] == "Patched Title"
+        # Everything else must be untouched
+        assert data["content"] == sample_prompt_data["content"]
+        assert data["description"] == sample_prompt_data["description"]
+    
+    def test_patch_prompt_not_found(self, client: TestClient):
+        response = client.patch("/prompts/nonexistent-id", json={"title": "X"})
+        assert response.status_code == 404    
         
     
     def test_sorting_order(self, client: TestClient):
