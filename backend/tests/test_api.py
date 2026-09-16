@@ -123,9 +123,50 @@ class TestPrompts:
     
     def test_patch_prompt_not_found(self, client: TestClient):
         response = client.patch("/prompts/nonexistent-id", json={"title": "X"})
-        assert response.status_code == 404    
-        
+        assert response.status_code == 404 
+
+    def test_create_prompt_with_tags(self, client: TestClient, sample_prompt_data):
+        data = {**sample_prompt_data, "tags": ["coding", "review"]}
+        response = client.post("/prompts", json=data)
+        assert response.status_code == 201
+        assert response.json()["tags"] == ["coding", "review"]
     
+    def test_filter_prompts_by_tag(self, client: TestClient):
+        client.post("/prompts", json={"title": "A", "content": "Content A here", "tags": ["coding"]})
+        client.post("/prompts", json={"title": "B", "content": "Content B here", "tags": ["writing"]})
+        
+        response = client.get("/prompts?tag=coding")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["prompts"][0]["title"] == "A"
+
+    def test_test_prompt_success(self, client: TestClient, sample_prompt_data):
+        # sample_prompt_data content contains {{code}}
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        
+        response = client.post(
+            f"/prompts/{prompt_id}/test",
+            json={"variables": {"code": "print('hello')"}}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["prompt_id"] == prompt_id
+        assert "print('hello')" in data["rendered_content"]
+        assert "{{code}}" not in data["rendered_content"]
+    
+    def test_test_prompt_missing_variable(self, client: TestClient, sample_prompt_data):
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        
+        response = client.post(f"/prompts/{prompt_id}/test", json={"variables": {}})
+        assert response.status_code == 400
+    
+    def test_test_prompt_not_found(self, client: TestClient):
+        response = client.post("/prompts/bad-id/test", json={"variables": {}})
+        assert response.status_code == 404     
+
     def test_sorting_order(self, client: TestClient):
         """Test that prompts are sorted newest first.
         
@@ -146,6 +187,41 @@ class TestPrompts:
         
         # Newest (Second) should be first
         assert prompts[0]["title"] == "Second"  # Will fail until Bug #3 fixed
+
+    def test_version_history_created_on_update(self, client: TestClient, sample_prompt_data):
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        
+        # Update the prompt via PUT
+        client.put(f"/prompts/{prompt_id}", json={
+            "title": "Updated Title",
+            "content": "Updated content here"
+        })
+        
+        response = client.get(f"/prompts/{prompt_id}/versions")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        # Version 1 should hold the ORIGINAL values
+        assert data["versions"][0]["title"] == sample_prompt_data["title"]
+    
+    def test_get_specific_version(self, client: TestClient, sample_prompt_data):
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        
+        client.patch(f"/prompts/{prompt_id}", json={"title": "V2 Title"})
+        client.patch(f"/prompts/{prompt_id}", json={"title": "V3 Title"})
+        
+        response = client.get(f"/prompts/{prompt_id}/versions/1")
+        assert response.status_code == 200
+        assert response.json()["title"] == sample_prompt_data["title"]
+        
+        response2 = client.get(f"/prompts/{prompt_id}/versions/2")
+        assert response2.json()["title"] == "V2 Title"
+    
+    def test_versions_not_found(self, client: TestClient):
+        response = client.get("/prompts/bad-id/versions")
+        assert response.status_code == 404
 
 
 class TestCollections:

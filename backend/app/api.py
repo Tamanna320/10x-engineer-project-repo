@@ -5,13 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
 from app.models import (
-    Prompt, PromptCreate, PromptUpdate,PromptPatch,
+    Prompt, PromptCreate, PromptUpdate,PromptPatch, PromptVersion,
     Collection, CollectionCreate,
     PromptList, CollectionList, HealthResponse,
+    PromptTestRequest, PromptTestResponse, VersionList,
     get_current_time
 )
 from app.storage import storage
-from app.utils import sort_prompts_by_date, filter_prompts_by_collection, search_prompts
+from app.utils import sort_prompts_by_date, filter_prompts_by_collection, search_prompts, filter_prompts_by_tag, extract_variables, render_prompt
 from app import __version__
 
 
@@ -43,7 +44,8 @@ def health_check():
 @app.get("/prompts", response_model=PromptList)
 def list_prompts(
     collection_id: Optional[str] = None,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    tag: Optional[str] = None
 ):
     prompts = storage.get_all_prompts()
     
@@ -54,6 +56,10 @@ def list_prompts(
     # Search if query provided
     if search:
         prompts = search_prompts(prompts, search)
+
+     # Filter by tag if specified
+    if tag:
+        prompts = filter_prompts_by_tag(prompts, tag)    
     
     # Sort by date (newest first)
     # Note: There might be an issue with the sorting...
@@ -93,7 +99,16 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         collection = storage.get_collection(prompt_data.collection_id)
         if not collection:
             raise HTTPException(status_code=400, detail="Collection not found")
-    
+
+    old_version = PromptVersion(
+        version=len(storage.get_versions(prompt_id)) + 1,
+        title=existing.title,
+        content=existing.content,
+        description=existing.description,
+        collection_id=existing.collection_id,
+        tags=existing.tags,
+    )
+    storage.save_version(prompt_id, old_version)
     # BUG #2: We're not updating the updated_at timestamp!
     # The updated prompt keeps the old timestamp
     updated_prompt = Prompt(
@@ -102,6 +117,7 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         content=prompt_data.content,
         description=prompt_data.description,
         collection_id=prompt_data.collection_id,
+        tags=prompt_data.tags,
         created_at=existing.created_at,
         updated_at=get_current_time()
     )
@@ -125,7 +141,17 @@ def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
         collection = storage.get_collection(update_data["collection_id"])
         if not collection:
             raise HTTPException(status_code=400, detail="Collection not found")
-    
+
+    # Save the current state as a version before overwriting
+    old_version = PromptVersion(
+        version=len(storage.get_versions(prompt_id)) + 1,
+        title=existing.title,
+        content=existing.content,
+        description=existing.description,
+        collection_id=existing.collection_id,
+        tags=existing.tags,
+    )
+    storage.save_version(prompt_id, old_version)
     # Build the updated prompt: new values where provided, old values otherwise
     updated_prompt = Prompt(
         id=existing.id,
@@ -133,6 +159,7 @@ def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
         content=update_data.get("content", existing.content),
         description=update_data.get("description", existing.description),
         collection_id=update_data.get("collection_id", existing.collection_id),
+        tags=update_data.get("tags", existing.tags),
         created_at=existing.created_at,
         updated_at=get_current_time()
     )
@@ -146,6 +173,47 @@ def delete_prompt(prompt_id: str):
         raise HTTPException(status_code=404, detail="Prompt not found")
     return None
 
+@app.post("/prompts/{prompt_id}/test", response_model=PromptTestResponse)
+def test_prompt(prompt_id: str, test_data: PromptTestRequest):
+    prompt = storage.get_prompt(prompt_id)
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    
+    # Find all {{variables}} the template requires
+    required_vars = extract_variables(prompt.content)
+    
+    # Check the user provided a value for every required variable
+    missing = [v for v in required_vars if v not in test_data.variables]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing values for variables: {', '.join(missing)}"
+        )
+    
+    # Render the template with the provided values
+    rendered = render_prompt(prompt.content, test_data.variables)
+    return PromptTestResponse(prompt_id=prompt.id, rendered_content=rendered)
+
+@app.get("/prompts/{prompt_id}/versions", response_model=VersionList)
+def list_versions(prompt_id: str):
+    prompt = storage.get_prompt(prompt_id)
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    
+    versions = storage.get_versions(prompt_id)
+    return VersionList(versions=versions, total=len(versions))
+
+
+@app.get("/prompts/{prompt_id}/versions/{version_number}", response_model=PromptVersion)
+def get_prompt_version(prompt_id: str, version_number: int):
+    prompt = storage.get_prompt(prompt_id)
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    
+    version = storage.get_version(prompt_id, version_number)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return version
 
 # ============== Collection Endpoints ==============
 

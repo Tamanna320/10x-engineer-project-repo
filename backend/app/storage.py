@@ -5,13 +5,14 @@ In a production environment, this would be replaced with a database.
 """
 
 from typing import Dict, List, Optional
-from app.models import Prompt, Collection
+from app.models import Prompt, Collection, PromptVersion
 
 
 class Storage:
     def __init__(self):
         self._prompts: Dict[str, Prompt] = {}
         self._collections: Dict[str, Collection] = {}
+        self._versions: Dict[str, List[PromptVersion]] = {}
     
     # ============== Prompt Operations ==============
     
@@ -34,6 +35,7 @@ class Storage:
     def delete_prompt(self, prompt_id: str) -> bool:
         if prompt_id in self._prompts:
             del self._prompts[prompt_id]
+            self._versions.pop(prompt_id, None)
             return True
         return False
     
@@ -57,12 +59,29 @@ class Storage:
     
     def get_prompts_by_collection(self, collection_id: str) -> List[Prompt]:
         return [p for p in self._prompts.values() if p.collection_id == collection_id]
+
+        # ============== Version Operations ==============
+    
+    def save_version(self, prompt_id: str, version: PromptVersion) -> None:
+        if prompt_id not in self._versions:
+            self._versions[prompt_id] = []
+        self._versions[prompt_id].append(version)
+    
+    def get_versions(self, prompt_id: str) -> List[PromptVersion]:
+        return self._versions.get(prompt_id, [])
+    
+    def get_version(self, prompt_id: str, version_number: int) -> Optional[PromptVersion]:
+        for v in self.get_versions(prompt_id):
+            if v.version == version_number:
+                return v
+        return None
     
     # ============== Utility ==============
     
     def clear(self):
         self._prompts.clear()
         self._collections.clear()
+        self._versions.clear()
 
 
 # Global storage instance
