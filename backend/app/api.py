@@ -62,7 +62,6 @@ def list_prompts(
         prompts = filter_prompts_by_tag(prompts, tag)    
     
     # Sort by date (newest first)
-    # Note: There might be an issue with the sorting...
     prompts = sort_prompts_by_date(prompts, descending=True)
     
     return PromptList(prompts=prompts, total=len(prompts))
@@ -109,8 +108,8 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         tags=existing.tags,
     )
     storage.save_version(prompt_id, old_version)
-    # BUG #2: We're not updating the updated_at timestamp!
-    # The updated prompt keeps the old timestamp
+
+    # Build the updated prompt with a fresh updated_at timestamp
     updated_prompt = Prompt(
         id=existing.id,
         title=prompt_data.title,
@@ -125,8 +124,7 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     return storage.update_prompt(prompt_id, updated_prompt)
 
 
-# NOTE: PATCH endpoint is missing! Students need to implement this.
-# It should allow partial updates (only update provided fields)
+# Partial update: only the fields sent by the client are changed
 @app.patch("/prompts/{prompt_id}", response_model=Prompt)
 def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
     existing = storage.get_prompt(prompt_id)
