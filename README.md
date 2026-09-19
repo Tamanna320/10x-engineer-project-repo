@@ -1,158 +1,310 @@
 # PromptLab
 
-**Your AI Prompt Engineering Platform**
+**An AI Prompt Engineering Platform — store, organize, version, and test your prompt templates.**
 
+PromptLab is a REST API built with FastAPI that acts as a central workspace for AI prompts. Think of it as a "Postman for Prompts": you can save prompt templates with `{{variables}}`, organize them into collections, tag and search them, track their version history, and render them with sample inputs — all through a clean HTTP API.
+
+> **Note:** PromptLab currently uses **in-memory storage**. All data is lost when the server restarts. The storage layer is isolated in `backend/app/storage.py` so it can be swapped for a real database later.
 ---
 
-## Welcome to the Team! 👋
+## Features
 
-Congratulations on joining the PromptLab engineering team! You've been brought on to help us build the next generation of prompt engineering tools.
-
-### What is PromptLab?
-
-PromptLab is an internal tool for AI engineers to **store, organize, and manage their prompts**. Think of it as a "Postman for Prompts" — a professional workspace where teams can:
-
-- 📝 Store prompt templates with variables (`{{input}}`, `{{context}}`)
-- 📁 Organize prompts into collections
-- 🏷️ Tag and search prompts
-- 📜 Track version history
-- 🧪 Test prompts with sample inputs
-
-### The Current Situation
-
-The previous developer left us with a *partially working* backend. The core structure is there, but:
-
-- There are **several bugs** that need fixing
-- Some **features are incomplete**
-- The **documentation is minimal** (you'll fix that)
-- There are **no tests** worth mentioning
-- **No CI/CD pipeline** exists
-- **No frontend** has been built yet
-
-Your job over the next 4 weeks is to transform this into a **production-ready, full-stack application**.
-
+- 📝 **Prompt management** — Create, read, update (full and partial), and delete prompts
+- 🧩 **Prompt templates** — Use `{{variable}}` placeholders inside prompt content
+- 🧪 **Prompt testing** — Render a template with sample variable values via `/prompts/{id}/test`
+- 📜 **Version history** — Every update automatically saves a snapshot of the previous state, retrievable via `/prompts/{id}/versions`
+- 📁 **Collections** — Group prompts into named collections; deleting a collection safely unassigns its prompts instead of deleting them
+- 🏷️ **Tags** — Label prompts and filter them by tag
+- 🔍 **Search** — Case-insensitive search across prompt titles and descriptions
+- ↕️ **Sorting & filtering** — List prompts filtered by collection, search query, or tag, sorted newest-first
+- ✅ **Automatic validation** — Request data is validated with Pydantic (e.g., title length, required fields); assigning a prompt to a non-existent collection is rejected
+- 🌐 **CORS enabled** — Ready for a browser-based frontend to connect
+- 🏥 **Health check** — `/health` endpoint for uptime monitoring
 ---
 
-## Quick Start
+## Tech Stack
 
-### Prerequisites
-
-- Python 3.10+
-- Node.js 18+ (for Week 4)
-- Git
-
-### Run Locally
-
-```bash
-# Clone the repo
-git clone <your-repo-url>
-cd promptlab
-
-# Set up backend
-cd backend
-pip install -r requirements.txt
-python main.py
-```
-
-API runs at: http://localhost:8000
-
-API docs at: http://localhost:8000/docs
-
-### Run Tests
-
-```bash
-cd backend
-pytest tests/ -v
-```
-
+- **Python 3.10+**
+- **FastAPI 0.109** — web framework
+- **Pydantic 2.5** — data validation
+- **Uvicorn 0.27** — ASGI server
+- **pytest 7.4 + httpx** — testing
 ---
 
 ## Project Structure
 
 ```
 promptlab/
-├── README.md                    # You are here
-├── PROJECT_BRIEF.md             # Your assignment details
-├── GRADING_RUBRIC.md            # How you'll be graded
+├── README.md                 # You are here
+├── config.yaml
 │
 ├── backend/
 │   ├── app/
-│   │   ├── __init__.py
-│   │   ├── api.py              # FastAPI routes (has bugs!)
-│   │   ├── models.py           # Pydantic models
-│   │   ├── storage.py          # In-memory storage
-│   │   └── utils.py            # Helper functions
+│   │   ├── __init__.py       # Package version
+│   │   ├── api.py            # FastAPI routes (all endpoints)
+│   │   ├── models.py         # Pydantic models (data shapes + validation)
+│   │   ├── storage.py        # In-memory storage layer
+│   │   └── utils.py          # Helpers: sorting, filtering, search, templating
 │   ├── tests/
 │   │   ├── __init__.py
-│   │   ├── test_api.py         # Basic tests
-│   │   └── conftest.py         # Test fixtures
-│   ├── main.py                 # Entry point
-│   └── requirements.txt
+│   │   ├── conftest.py       # Test fixtures (test client, sample data)
+│   │   └── test_api.py       # API tests
+│   ├── main.py               # Server entry point
+│   └── requirements.txt      # Pinned dependencies
 │
-├── frontend/                    # You'll create this in Week 4
-├── specs/                       # You'll create this in Week 2
-├── docs/                        # You'll create this in Week 2
-└── .github/                     # You'll set up CI/CD in Week 3
+├── docs/                     # Documentation (grows over time)
+├── specs/                    # Feature specifications (grows over time)
+└── frontend/                 # Frontend (planned)
 ```
 
 ---
 
-## Your Mission
+## Prerequisites
 
-### 🧪 Experimentation Encouraged!
-While we provide guidelines, **you are the engineer**. If you see a better way to solve a problem using AI, do it!
-- Want to swap the storage layer for a real database? **Go for it.**
-- Want to add Authentication? **Do it.**
-- Want to rewrite the API in a different style? **As long as tests pass, you're clear.**
-
-The goal is to learn how to build *better* software *faster* with AI. Don't be afraid to break things and rebuild them better.
-
-### Week 1: Fix the Backend
-- Understand this codebase using AI
-- Find and fix the bugs
-- Implement missing features
-
-### Week 2: Document Everything
-- Write proper documentation
-- Create feature specifications
-- Set up coding standards
-
-### Week 3: Make it Production-Ready
-- Write comprehensive tests
-- Implement new features with TDD
-- Set up CI/CD and Docker
-
-### Week 4: Build the Frontend
-- Create a React frontend
-- Connect it to the backend
-- Polish the user experience
+- **Python 3.10 or higher**
+- **pip**
+- **Git**
 
 ---
 
-## API Endpoints (Current)
+## Installation
 
-| Method | Endpoint | Description | Status |
-|--------|----------|-------------|--------|
-| GET | `/health` | Health check | ✅ Works |
-| GET | `/prompts` | List all prompts | ⚠️ Has issues |
-| GET | `/prompts/{id}` | Get single prompt | ❌ Bug |
-| POST | `/prompts` | Create prompt | ✅ Works |
-| PUT | `/prompts/{id}` | Update prompt | ⚠️ Has issues |
-| DELETE | `/prompts/{id}` | Delete prompt | ✅ Works |
-| GET | `/collections` | List collections | ✅ Works |
-| GET | `/collections/{id}` | Get collection | ✅ Works |
-| POST | `/collections` | Create collection | ✅ Works |
-| DELETE | `/collections/{id}` | Delete collection | ❌ Bug |
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd promptlab
 
----
+# 2. Create and activate a virtual environment (recommended)
+python -m venv .venv
 
-## Tech Stack
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
 
-- **Backend**: Python 3.10+, FastAPI, Pydantic
-- **Frontend**: React, Vite (Week 4)
-- **Testing**: pytest
-- **DevOps**: Docker, GitHub Actions (Week 3)
+# macOS / Linux
+source .venv/bin/activate
+
+# 3. Install dependencies
+cd backend
+pip install -r requirements.txt
+```
 
 ---
 
-Good luck, and welcome to the team! 🚀
+## Quick Start
+
+```bash
+# From the backend/ directory
+python main.py
+```
+
+The API is now running:
+
+- **API base URL:** http://localhost:8000
+- **Interactive API docs (Swagger UI):** http://localhost:8000/docs
+- **Alternative docs (ReDoc):** http://localhost:8000/redoc
+
+Verify it's working:
+
+```bash
+curl http://localhost:8000/health
+```
+
+```json
+{"status": "healthy", "version": "0.1.0"}
+```
+
+### Your first prompt
+
+```bash
+# Create a prompt template with a {{variable}}
+curl -X POST http://localhost:8000/prompts \
+  -H "Content-Type: application/json" \
+  -d "{\"title\": \"Code Review\", \"content\": \"Review the following code and provide feedback:\\n\\n{{code}}\", \"tags\": [\"coding\", \"review\"]}"
+```
+
+Response (`201 Created`):
+
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "title": "Code Review",
+  "content": "Review the following code and provide feedback:\n\n{{code}}",
+  "description": null,
+  "collection_id": null,
+  "tags": ["coding", "review"],
+  "created_at": "2024-01-15T10:30:00.000000",
+  "updated_at": "2024-01-15T10:30:00.000000"
+}
+```
+
+Render the template with a real value:
+
+```bash
+curl -X POST http://localhost:8000/prompts/<prompt-id>/test \
+  -H "Content-Type: application/json" \
+  -d "{\"variables\": {\"code\": \"print('hello world')\"}}"
+```
+
+```json
+{
+  "prompt_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "rendered_content": "Review the following code and provide feedback:\n\nprint('hello world')"
+}
+```
+
+---
+
+## API Reference
+
+### Health
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check — returns status and API version |
+
+### Prompts
+
+| Method | Endpoint | Description | Success | Errors |
+|--------|----------|-------------|---------|--------|
+| GET | `/prompts` | List prompts (newest first) | 200 | — |
+| GET | `/prompts/{id}` | Get a single prompt | 200 | 404 |
+| POST | `/prompts` | Create a prompt | 201 | 400, 422 |
+| PUT | `/prompts/{id}` | Full update (all fields required) | 200 | 400, 404, 422 |
+| PATCH | `/prompts/{id}` | Partial update (only sent fields change) | 200 | 400, 404, 422 |
+| DELETE | `/prompts/{id}` | Delete a prompt (and its version history) | 204 | 404 |
+| POST | `/prompts/{id}/test` | Render the template with variable values | 200 | 400, 404 |
+| GET | `/prompts/{id}/versions` | List saved versions of a prompt | 200 | 404 |
+| GET | `/prompts/{id}/versions/{n}` | Get one specific version | 200 | 404 |
+
+**Query parameters for `GET /prompts`** (can be combined):
+
+```
+GET /prompts?collection_id=<id>&search=review&tag=coding
+```
+
+| Parameter | Effect |
+|-----------|--------|
+| `collection_id` | Only prompts in that collection |
+| `search` | Case-insensitive match on title and description |
+| `tag` | Only prompts having that tag |
+
+**PUT vs PATCH:** `PUT` replaces the whole prompt — you must send all required fields. `PATCH` changes only the fields you send:
+
+```bash
+# Change only the title; everything else stays the same
+curl -X PATCH http://localhost:8000/prompts/<prompt-id> \
+  -H "Content-Type: application/json" \
+  -d "{\"title\": \"Better Code Review\"}"
+```
+
+Both `PUT` and `PATCH` save the previous state as a new version before overwriting, so history is never lost:
+
+```bash
+curl http://localhost:8000/prompts/<prompt-id>/versions
+```
+
+```json
+{
+  "versions": [
+    {
+      "version": 1,
+      "title": "Code Review",
+      "content": "Review the following code and provide feedback:\n\n{{code}}",
+      "description": null,
+      "collection_id": null,
+      "tags": ["coding", "review"],
+      "saved_at": "2024-01-15T10:35:00.000000"
+    }
+  ],
+  "total": 1
+}
+```
+
+### Collections
+
+| Method | Endpoint | Description | Success | Errors |
+|--------|----------|-------------|---------|--------|
+| GET | `/collections` | List all collections | 200 | — |
+| GET | `/collections/{id}` | Get a single collection | 200 | 404 |
+| POST | `/collections` | Create a collection | 201 | 422 |
+| DELETE | `/collections/{id}` | Delete a collection | 204 | 404 |
+
+```bash
+curl -X POST http://localhost:8000/collections \
+  -H "Content-Type: application/json" \
+  -d "{\"name\": \"Development\", \"description\": \"Prompts for dev tasks\"}"
+```
+
+**Deleting a collection does not delete its prompts** — their `collection_id` is set to `null` so they become unassigned.
+
+### Common error responses
+
+| Status | Meaning |
+|--------|---------|
+| 400 | Bad request (e.g., unknown `collection_id`, missing template variables) |
+| 404 | Prompt, collection, or version not found |
+| 422 | Validation failed (e.g., empty title, title over 200 characters) |
+
+---
+
+## Development Setup
+
+The steps under **Installation** give you everything needed for development. A few extra notes:
+
+- **Auto-reload:** `main.py` starts Uvicorn with `reload=True`, so the server restarts automatically when you edit code. Just run `python main.py` and start editing.
+- **Manual testing:** use the interactive Swagger UI at http://localhost:8000/docs — you can call every endpoint from your browser without writing any client code.
+- **Code layout:** keep the current layering —
+  - `models.py` — data shapes and validation rules only
+  - `api.py` — HTTP routes only; delegate work to `storage.py` and `utils.py`
+  - `storage.py` — all data access; the API never touches the internal dictionaries directly
+  - `utils.py` — pure helper functions (no state)
+
+---
+
+## Running Tests
+
+```bash
+# From the backend/ directory
+pytest tests/ -v
+```
+
+The test suite uses FastAPI's `TestClient` (no live server needed) and fixtures from `tests/conftest.py`. Storage is automatically cleared before and after every test, so tests are fully independent.
+
+To also see test coverage (`pytest-cov` is included in `requirements.txt`):
+
+```bash
+pytest tests/ -v --cov=app
+```
+
+---
+
+## Contributing
+
+1. **Create a branch** for your change:
+   ```bash
+   git checkout -b feature/my-change
+   ```
+2. **Follow the existing code conventions:**
+   - Keep the layered structure (`api.py` → `storage.py` / `utils.py`)
+   - Add or update Pydantic models in `models.py` for any new request/response data
+   - Use type hints and docstrings consistent with the existing code
+3. **Write tests** for new behavior in `tests/test_api.py` (reuse the fixtures in `conftest.py`).
+4. **Run the full test suite** before submitting:
+   ```bash
+   pytest tests/ -v
+   ```
+   All tests must pass.
+5. **Open a pull request** with a clear description of what changed and why.
+
+### Reporting issues
+
+When filing a bug report, include: the endpoint and HTTP method, the request body you sent, the response you got (status code + body), and the response you expected.
+
+---
+
+## License
+
+Internal project — all rights reserved.
+
+
+
