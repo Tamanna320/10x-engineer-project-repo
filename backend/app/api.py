@@ -431,25 +431,21 @@ def restore_prompt_version(prompt_id: str, version_number: int):
         raise HTTPException(status_code=404, detail="Version not found")
 
     # 3. Validate the version's collection_id still exists (if set)
-    if version.collection_id is not None:
-        collection = storage.get_collection(version.collection_id)
-        if not collection:
+    if version.collection_id is not None and not storage.get_collection(version.collection_id):
             raise HTTPException(status_code=400, detail="Collection not found")
 
     # 4. Snapshot the current state before restoring
-    old_version = PromptVersion(
+    storage.save_version(prompt_id, PromptVersion(
         version=len(storage.get_versions(prompt_id)) + 1,
         title=existing.title,
         content=existing.content,
         description=existing.description,
         collection_id=existing.collection_id,
         tags=existing.tags,
-    )
-    storage.save_version(prompt_id, old_version)
+    ))
 
-    # 5. Build the restored prompt: editable fields from the version,
-    #    identity fields preserved, updated_at refreshed
-    restored_prompt = Prompt(
+    # 5. Build and persist the restored prompt
+    return storage.update_prompt(prompt_id, Prompt(
         id=existing.id,
         title=version.title,
         content=version.content,
@@ -458,10 +454,7 @@ def restore_prompt_version(prompt_id: str, version_number: int):
         tags=version.tags,
         created_at=existing.created_at,
         updated_at=get_current_time()
-    )
-
-    # 6. Persist and return
-    return storage.update_prompt(prompt_id, restored_prompt)
+    ))
 
 # ============== Collection Endpoints ==============
 
