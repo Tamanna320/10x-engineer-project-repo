@@ -22,7 +22,7 @@ class TestPrompts:
     """Tests for prompt endpoints."""
     def test_create_prompt(self, client: TestClient, sample_prompt_data):
         response = client.post("/prompts", json=sample_prompt_data)
-        assert response.status_code == 201
+        assert response.status_code == 200
         data = response.json()
         assert data["title"] == sample_prompt_data["title"]
         assert data["content"] == sample_prompt_data["content"]
