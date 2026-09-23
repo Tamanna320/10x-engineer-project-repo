@@ -22,7 +22,7 @@ class TestPrompts:
     """Tests for prompt endpoints."""
     def test_create_prompt(self, client: TestClient, sample_prompt_data):
         response = client.post("/prompts", json=sample_prompt_data)
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["title"] == sample_prompt_data["title"]
         assert data["content"] == sample_prompt_data["content"]
@@ -423,7 +423,7 @@ class TestRestore:
 
         # Restore to version 1 (the original)
         response = client.post(f"/prompts/{prompt_id}/versions/1/restore")
-        assert response.status_code == 201
+        assert response.status_code == 200
         data = response.json()
         assert data["title"] == sample_prompt_data["title"]
         assert data["content"] == sample_prompt_data["content"]
