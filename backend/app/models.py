@@ -1,9 +1,9 @@
 """Pydantic models for PromptLab"""
 
 from datetime import datetime
-from typing import Optional, List, Dict
-from pydantic import BaseModel, Field
 from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 
 def generate_id() -> str:
@@ -50,9 +50,9 @@ class PromptBase(BaseModel):
     """
     title: str = Field(..., min_length=1, max_length=200)
     content: str = Field(..., min_length=1)
-    description: Optional[str] = Field(None, max_length=500)
-    collection_id: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    description: str | None = Field(None, max_length=500)
+    collection_id: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class PromptCreate(PromptBase):
@@ -86,7 +86,6 @@ class PromptCreate(PromptBase):
                 tags=["code", "review"]
             )
     """
-    pass
 
 
 class PromptUpdate(PromptBase):
@@ -123,7 +122,6 @@ class PromptUpdate(PromptBase):
                 tags=["code", "review", "v2"]
             )
     """
-    pass
 
 
 class PromptPatch(BaseModel):
@@ -157,11 +155,11 @@ class PromptPatch(BaseModel):
                 tags=["code", "review", "v3"]
             )
     """
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
-    content: Optional[str] = Field(None, min_length=1)
-    description: Optional[str] = Field(None, max_length=500)
-    collection_id: Optional[str] = None
-    tags: Optional[List[str]] = None
+    title: str | None = Field(None, min_length=1, max_length=200)
+    content: str | None = Field(None, min_length=1)
+    description: str | None = Field(None, max_length=500)
+    collection_id: str | None = None
+    tags: list[str] | None = None
 
 
 class Prompt(PromptBase):
@@ -257,9 +255,9 @@ class PromptVersion(BaseModel):
     version: int
     title: str
     content: str
-    description: Optional[str] = None
-    collection_id: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    description: str | None = None
+    collection_id: str | None = None
+    tags: list[str] = Field(default_factory=list)
     saved_at: datetime = Field(default_factory=get_current_time)        
 
 
@@ -289,7 +287,7 @@ class CollectionBase(BaseModel):
             )
     """
     name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
+    description: str | None = Field(None, max_length=500)
 
 
 class CollectionCreate(CollectionBase):
@@ -314,7 +312,6 @@ class CollectionCreate(CollectionBase):
                 description="Prompts for reviewing and improving code."
             )
     """
-    pass
 
 
 class Collection(CollectionBase):
@@ -374,7 +371,7 @@ class PromptList(BaseModel):
             prompts = sort_prompts_by_date(prompts, descending=True)
             return PromptList(prompts=prompts, total=len(prompts))
     """
-    prompts: List[Prompt]
+    prompts: list[Prompt]
     total: int
 
 class PromptTestRequest(BaseModel):
@@ -402,7 +399,7 @@ class PromptTestRequest(BaseModel):
             )
             rendered = render_prompt(prompt.content, test_data.variables)
     """
-    variables: Dict[str, str] = Field(default_factory=dict)
+    variables: dict[str, str] = Field(default_factory=dict)
 
 
 class PromptTestResponse(BaseModel):
@@ -452,7 +449,7 @@ class VersionList(BaseModel):
             versions = storage.get_versions(prompt_id)
             return VersionList(versions=versions, total=len(versions))
     """
-    versions: List[PromptVersion]
+    versions: list[PromptVersion]
     total: int
 
 
@@ -477,7 +474,7 @@ class CollectionList(BaseModel):
                 total=len(collections)
             )
     """
-    collections: List[Collection]
+    collections: list[Collection]
     total: int
 
 

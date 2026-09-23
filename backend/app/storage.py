@@ -4,8 +4,8 @@ This module provides simple in-memory storage for prompts and collections.
 In a production environment, this would be replaced with a database.
 """
 
-from typing import Dict, List, Optional
-from app.models import Prompt, Collection, PromptVersion
+
+from app.models import Collection, Prompt, PromptVersion
 
 
 class Storage:
@@ -23,9 +23,9 @@ class Storage:
 
     def __init__(self):
         """Initialize the storage with empty prompt, collection, and version stores."""
-        self._prompts: Dict[str, Prompt] = {}
-        self._collections: Dict[str, Collection] = {}
-        self._versions: Dict[str, List[PromptVersion]] = {}
+        self._prompts: dict[str, Prompt] = {}
+        self._collections: dict[str, Collection] = {}
+        self._versions: dict[str, list[PromptVersion]] = {}
     
     # ============== Prompt Operations ==============
     
@@ -43,7 +43,7 @@ class Storage:
         self._prompts[prompt.id] = prompt
         return prompt
     
-    def get_prompt(self, prompt_id: str) -> Optional[Prompt]:
+    def get_prompt(self, prompt_id: str) -> Prompt | None:
         """Retrieve a prompt by its ID.
 
         Args:
@@ -54,7 +54,7 @@ class Storage:
         """
         return self._prompts.get(prompt_id)
     
-    def get_all_prompts(self) -> List[Prompt]:
+    def get_all_prompts(self) -> list[Prompt]:
         """Retrieve all stored prompts.
 
         Returns:
@@ -63,7 +63,7 @@ class Storage:
         """
         return list(self._prompts.values())
     
-    def update_prompt(self, prompt_id: str, prompt: Prompt) -> Optional[Prompt]:
+    def update_prompt(self, prompt_id: str, prompt: Prompt) -> Prompt | None:
         """Replace an existing prompt.
 
         Args:
@@ -111,7 +111,7 @@ class Storage:
         self._collections[collection.id] = collection
         return collection
     
-    def get_collection(self, collection_id: str) -> Optional[Collection]:
+    def get_collection(self, collection_id: str) -> Collection | None:
         """Retrieve a collection by its ID.
 
         Args:
@@ -122,7 +122,7 @@ class Storage:
         """
         return self._collections.get(collection_id)
     
-    def get_all_collections(self) -> List[Collection]:
+    def get_all_collections(self) -> list[Collection]:
         """Retrieve all stored collections.
 
         Returns:
@@ -147,7 +147,7 @@ class Storage:
             return True
         return False
     
-    def get_prompts_by_collection(self, collection_id: str) -> List[Prompt]:
+    def get_prompts_by_collection(self, collection_id: str) -> list[Prompt]:
         """Retrieve all prompts that belong to a collection.
 
         Args:
@@ -179,7 +179,7 @@ class Storage:
             self._versions[prompt_id] = []
         self._versions[prompt_id].append(version)
     
-    def get_versions(self, prompt_id: str) -> List[PromptVersion]:
+    def get_versions(self, prompt_id: str) -> list[PromptVersion]:
         """Retrieve the version history of a prompt.
 
         Args:
@@ -191,7 +191,7 @@ class Storage:
         """
         return self._versions.get(prompt_id, [])
     
-    def get_version(self, prompt_id: str, version_number: int) -> Optional[PromptVersion]:
+    def get_version(self, prompt_id: str, version_number: int) -> PromptVersion | None:
         """Retrieve a specific version of a prompt by version number.
 
         Args:

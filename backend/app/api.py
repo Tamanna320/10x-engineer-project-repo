@@ -1,20 +1,35 @@
 """FastAPI routes for PromptLab"""
 
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
 
+from app import __version__
 from app.models import (
-    Prompt, PromptCreate, PromptUpdate,PromptPatch, PromptVersion,
-    Collection, CollectionCreate,
-    PromptList, CollectionList, HealthResponse,
-    PromptTestRequest, PromptTestResponse, VersionList,
-    get_current_time
+    Collection,
+    CollectionCreate,
+    CollectionList,
+    HealthResponse,
+    Prompt,
+    PromptCreate,
+    PromptList,
+    PromptPatch,
+    PromptTestRequest,
+    PromptTestResponse,
+    PromptUpdate,
+    PromptVersion,
+    VersionList,
+    get_current_time,
 )
 from app.storage import storage
-from app.utils import sort_prompts_by_date, filter_prompts_by_collection, search_prompts, filter_prompts_by_tag, extract_variables, render_prompt
-from app import __version__
-
+from app.utils import (
+    extract_variables,
+    filter_prompts_by_collection,
+    filter_prompts_by_tag,
+    render_prompt,
+    search_prompts,
+    sort_prompts_by_date,
+)
 
 app = FastAPI(
     title="PromptLab API",
@@ -53,9 +68,9 @@ def health_check():
 
 @app.get("/prompts", response_model=PromptList)
 def list_prompts(
-    collection_id: Optional[str] = None,
-    search: Optional[str] = None,
-    tag: Optional[str] = None
+    collection_id: str | None = None,
+    search: str | None = None,
+    tag: str | None = None
 ):
     """List all prompts, with optional filtering and searching.
 
@@ -294,7 +309,6 @@ def delete_prompt(prompt_id: str):
     """
     if not storage.delete_prompt(prompt_id):
         raise HTTPException(status_code=404, detail="Prompt not found")
-    return None
 
 @app.post("/prompts/{prompt_id}/test", response_model=PromptTestResponse)
 def test_prompt(prompt_id: str, test_data: PromptTestRequest):
@@ -541,5 +555,4 @@ def delete_collection(collection_id: str):
     
     # Now it's safe to delete the collection
     storage.delete_collection(collection_id)
-    return None
 
