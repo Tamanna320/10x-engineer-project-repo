@@ -398,3 +398,168 @@ class TestCollections:
         response = client.delete("/collections/nonexistent-id")
         assert response.status_code == 404
         assert response.json()["detail"] == "Collection not found"
+
+
+class TestRestore:
+    """Tests for POST /prompts/{prompt_id}/versions/{version_number}/restore.
+
+    These tests follow the spec in specs/prompt-versions.md (AC-4.1 through
+    AC-4.7 and E-7).  They are expected to FAIL until the restore endpoint
+    is implemented in app/api.py.
+    """
+
+    # ---- AC-4.1: Restore happy path ----
+
+    def test_restore_happy_path(self, client: TestClient, sample_prompt_data):
+        """POST restore returns 200 with the version's field values."""
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+
+        # Update the prompt so version 1 captures the original state
+        client.put(f"/prompts/{prompt_id}", json={
+            "title": "Changed",
+            "content": "Changed content",
+        })
+
+        # Restore to version 1 (the original)
+        response = client.post(f"/prompts/{prompt_id}/versions/1/restore")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["title"] == sample_prompt_data["title"]
+        assert data["content"] == sample_prompt_data["content"]
+
+    # ---- AC-4.2: Restore snapshots current state first ----
+
+    def test_restore_snapshots_current_state(self, client: TestClient, sample_prompt_data):
+        """Restore saves the pre-restore state as a new version."""
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+
+        # Update -> version 1 holds the original
+        client.put(f"/prompts/{prompt_id}", json={
+            "title": "Changed",
+            "content": "Changed content",
+        })
+        # Before restore there is 1 version
+        assert client.get(f"/prompts/{prompt_id}/versions").json()["total"] == 1
+
+        # Restore to version 1
+        client.post(f"/prompts/{prompt_id}/versions/1/restore")
+
+        # Now there should be 2 versions; version 2 holds the "Changed" state
+        versions = client.get(f"/prompts/{prompt_id}/versions").json()
+        assert versions["total"] == 2
+        assert versions["versions"][1]["title"] == "Changed"
+
+    # ---- AC-4.3: Identity fields preserved, updated_at refreshed ----
+
+    def test_restore_preserves_id_and_created_at_refreshes_updated_at(
+        self, client: TestClient, sample_prompt_data
+    ):
+        """Restore keeps id and created_at, but refreshes updated_at."""
+        import time
+
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        original_created_at = create.json()["created_at"]
+        original_updated_at = create.json()["updated_at"]
+
+        # Update to create a version, then wait so updated_at can change
+        client.put(f"/prompts/{prompt_id}", json={
+            "title": "Changed",
+            "content": "Changed content",
+        })
+        time.sleep(0.1)
+
+        response = client.post(f"/prompts/{prompt_id}/versions/1/restore")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["id"] == prompt_id
+        assert data["created_at"] == original_created_at
+        assert data["updated_at"] != original_updated_at
+
+    # ---- AC-4.5: Unknown prompt -> 404 ----
+
+    def test_restore_unknown_prompt(self, client: TestClient):
+        """POST restore with an unknown prompt_id returns 404."""
+        response = client.post("/prompts/nonexistent-id/versions/1/restore")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Prompt not found"
+
+    # ---- AC-4.6: Unknown version -> 404, prompt unchanged ----
+
+    def test_restore_unknown_version(self, client: TestClient, sample_prompt_data):
+        """POST restore with an unknown version number returns 404 and leaves the prompt unchanged."""
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        original_title = create.json()["title"]
+
+        response = client.post(f"/prompts/{prompt_id}/versions/99/restore")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Version not found"
+
+        # Prompt must be unchanged
+        prompt = client.get(f"/prompts/{prompt_id}").json()
+        assert prompt["title"] == original_title
+
+        # No snapshot should have been created
+        versions = client.get(f"/prompts/{prompt_id}/versions").json()
+        assert versions["total"] == 0
+
+    # ---- E-7: Restore with deleted collection -> 400, no state change ----
+
+    def test_restore_deleted_collection(self, client: TestClient, sample_prompt_data):
+        """Restore a version whose collection_id references a deleted collection returns 400."""
+        # Create a collection and a prompt in it
+        col = client.post("/collections", json={"name": "Dev"}).json()
+        prompt_data = {**sample_prompt_data, "collection_id": col["id"]}
+        create = client.post("/prompts", json=prompt_data)
+        prompt_id = create.json()["id"]
+
+        # Update the prompt (unassign from collection) - version 1 still has the collection_id
+        client.put(f"/prompts/{prompt_id}", json={
+            "title": "Changed",
+            "content": "Changed content",
+            "collection_id": None,
+        })
+
+        # Delete the collection so version 1's collection_id is now stale
+        client.delete(f"/collections/{col['id']}")
+
+        # Attempt to restore version 1 - should fail with 400
+        response = client.post(f"/prompts/{prompt_id}/versions/1/restore")
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Collection not found"
+
+        # Prompt must be unchanged (still "Changed")
+        prompt = client.get(f"/prompts/{prompt_id}").json()
+        assert prompt["title"] == "Changed"
+
+        # No new snapshot should have been created (still just the 1 from the PUT)
+        versions = client.get(f"/prompts/{prompt_id}/versions").json()
+        assert versions["total"] == 1
+
+    # ---- AC-4.7: Restore is repeatable ----
+
+    def test_restore_repeatable(self, client: TestClient, sample_prompt_data):
+        """Calling restore twice succeeds both times; each call adds one snapshot."""
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+
+        # Update to create version 1
+        client.put(f"/prompts/{prompt_id}", json={
+            "title": "Changed",
+            "content": "Changed content",
+        })
+        assert client.get(f"/prompts/{prompt_id}/versions").json()["total"] == 1
+
+        # First restore of version 1
+        response1 = client.post(f"/prompts/{prompt_id}/versions/1/restore")
+        assert response1.status_code == 200
+        assert client.get(f"/prompts/{prompt_id}/versions").json()["total"] == 2
+
+        # Second restore of version 1
+        response2 = client.post(f"/prompts/{prompt_id}/versions/1/restore")
+        assert response2.status_code == 200
+        assert client.get(f"/prompts/{prompt_id}/versions").json()["total"] == 3
