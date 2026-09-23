@@ -10,7 +10,6 @@ from fastapi.testclient import TestClient
 
 class TestHealth:
     """Tests for health endpoint."""
-    
     def test_health_check(self, client: TestClient):
         response = client.get("/health")
         assert response.status_code == 200
@@ -21,7 +20,6 @@ class TestHealth:
 
 class TestPrompts:
     """Tests for prompt endpoints."""
-    
     def test_create_prompt(self, client: TestClient, sample_prompt_data):
         response = client.post("/prompts", json=sample_prompt_data)
         assert response.status_code == 201
@@ -208,23 +206,149 @@ class TestPrompts:
         assert response.json()["title"] == sample_prompt_data["title"]
         
         response2 = client.get(f"/prompts/{prompt_id}/versions/2")
+        assert response2.status_code == 200
         assert response2.json()["title"] == "V2 Title"
     
     def test_versions_not_found(self, client: TestClient):
         response = client.get("/prompts/bad-id/versions")
         assert response.status_code == 404
 
+    # ---- New tests for uncovered branches ----
+
+    def test_filter_prompts_by_collection_id(self, client: TestClient):
+        """GET /prompts?collection_id=... narrows results to that collection."""
+        # Create a collection
+        col = client.post("/collections", json={"name": "Dev"}).json()
+        # Create one prompt in the collection and one without
+        client.post("/prompts", json={
+            "title": "In Collection",
+            "content": "Content A",
+            "collection_id": col["id"],
+        })
+        client.post("/prompts", json={"title": "No Collection", "content": "Content B"})
+
+        response = client.get(f"/prompts?collection_id={col['id']}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["prompts"][0]["title"] == "In Collection"
+
+    def test_filter_prompts_by_search(self, client: TestClient):
+        """GET /prompts?search=... matches titles case-insensitively."""
+        client.post("/prompts", json={"title": "Code Review", "content": "Content A"})
+        client.post("/prompts", json={"title": "Recipe", "content": "Content B"})
+
+        response = client.get("/prompts?search=code")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["prompts"][0]["title"] == "Code Review"
+    
+    def test_filter_prompts_combined(self, client: TestClient):
+        """collection_id, search, and tag filters combine cumulatively (AND)."""
+        col = client.post("/collections", json={"name": "Dev"}).json()
+        client.post("/prompts", json={
+            "title": "Code Review",
+            "content": "Review code",
+            "collection_id": col["id"],
+            "tags": ["coding"],
+        })
+        # This one is in the collection but doesn't match the search
+        client.post("/prompts", json={
+            "title": "Recipe",
+            "content": "Cook pasta",
+            "collection_id": col["id"],
+            "tags": ["cooking"],
+        })
+        # This one matches the search but is not in the collection
+        client.post("/prompts", json={
+            "title": "Code Refactor",
+            "content": "Refactor code",
+            "tags": ["coding"],
+        })
+
+        response = client.get(
+            f"/prompts?collection_id={col['id']}&search=code&tag=coding"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["prompts"][0]["title"] == "Code Review"
+    
+    def test_create_prompt_invalid_collection_id(self, client: TestClient):
+        """POST /prompts with a non-existent collection_id returns 400."""
+        response = client.post("/prompts", json={
+            "title": "Test",
+            "content": "Content",
+            "collection_id": "nonexistent-col",
+        })
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Collection not found"
+
+    def test_update_prompt_not_found(self, client: TestClient):
+        """PUT /prompts/{bad-id} returns 404."""
+        response = client.put("/prompts/nonexistent-id", json={
+            "title": "Updated",
+            "content": "Updated content",
+        })
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Prompt not found"
+
+    def test_update_prompt_invalid_collection_id(self, client: TestClient, sample_prompt_data):
+        """PUT /prompts/{id} with a non-existent collection_id returns 400."""
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        
+        response = client.put(f"/prompts/{prompt_id}", json={
+            "title": "Updated",
+            "content": "Updated content",
+            "collection_id": "nonexistent-col",
+        })
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Collection not found"
+
+    def test_patch_prompt_invalid_collection_id(self, client: TestClient, sample_prompt_data):
+        """PATCH /prompts/{id} with a non-existent collection_id returns 400."""
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        
+        response = client.patch(f"/prompts/{prompt_id}", json={
+            "collection_id": "nonexistent-col",
+        })
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Collection not found"
+
+    def test_delete_prompt_not_found(self, client: TestClient):
+        """DELETE /prompts/{bad-id} returns 404."""
+        response = client.delete("/prompts/nonexistent-id")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Prompt not found"
+
+    def test_get_version_prompt_not_found(self, client: TestClient):
+        """GET /prompts/{bad-id}/versions/1 returns 404 (prompt not found)."""
+        response = client.get("/prompts/nonexistent-id/versions/1")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Prompt not found"
+
+    def test_get_version_number_not_found(self, client: TestClient, sample_prompt_data):
+        """GET /prompts/{id}/versions/99 returns 404 (version not found)."""
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+
+        response = client.get(f"/prompts/{prompt_id}/versions/99")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Version not found"
+
 
 class TestCollections:
     """Tests for collection endpoints."""
-    
     def test_create_collection(self, client: TestClient, sample_collection_data):
         response = client.post("/collections", json=sample_collection_data)
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == sample_collection_data["name"]
         assert "id" in data
-    
+
     def test_list_collections(self, client: TestClient, sample_collection_data):
         client.post("/collections", json=sample_collection_data)
         
@@ -232,26 +356,45 @@ class TestCollections:
         assert response.status_code == 200
         data = response.json()
         assert len(data["collections"]) == 1
-    
+
     def test_get_collection_not_found(self, client: TestClient):
         response = client.get("/collections/nonexistent-id")
         assert response.status_code == 404
-    
+
     def test_delete_collection_with_prompts(self, client: TestClient, sample_collection_data, sample_prompt_data):
         """Test deleting a collection that has prompts. """
         # Create collection
         col_response = client.post("/collections", json=sample_collection_data)
         collection_id = col_response.json()["id"]
-        
+
         # Create prompt in collection
         prompt_data = {**sample_prompt_data, "collection_id": collection_id}
         prompt_response = client.post("/prompts", json=prompt_data)
         prompt_id = prompt_response.json()["id"]
-        
+
         # Delete collection
         client.delete(f"/collections/{collection_id}")
-        
+
        # The prompt still exists but is now unassigned
         prompts = client.get("/prompts").json()["prompts"]
         assert len(prompts) == 1
         assert prompts[0]["collection_id"] is None
+
+    # ---- New tests for uncovered branches ----
+
+    def test_get_collection_success(self, client: TestClient, sample_collection_data):
+        """GET /collections/{id} returns 200 with the collection data."""
+        create = client.post("/collections", json=sample_collection_data)
+        collection_id = create.json()["id"]
+
+        response = client.get(f"/collections/{collection_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == collection_id
+        assert data["name"] == sample_collection_data["name"]
+
+    def test_delete_collection_not_found(self, client: TestClient):
+        """DELETE /collections/{bad-id} returns 404."""
+        response = client.delete("/collections/nonexistent-id")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Collection not found"
