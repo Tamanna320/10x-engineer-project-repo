@@ -302,6 +302,32 @@ When filing a bug report, include: the endpoint and HTTP method, the request bod
 
 ---
 
+## Run with Docker
+
+Docker must be installed and running.
+
+Start the application:
+
+```bash
+docker compose up --build
+```
+
+The API is available at http://localhost:8000
+
+Health check:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Stop the application:
+
+```bash
+docker compose down
+```
+
+---
+
 ## License
 
 Internal project — all rights reserved.
