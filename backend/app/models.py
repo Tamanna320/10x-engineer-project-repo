@@ -7,11 +7,21 @@ from pydantic import BaseModel, Field
 
 
 def generate_id() -> str:
+    """Generate a unique UUID4 identifier.
+
+    Returns:
+        str: A UUID4 string.
+    """
     return str(uuid4())
 
 
 def get_current_time() -> datetime:
-    return datetime.utcnow()
+    """Get the current UTC datetime.
+
+    Returns:
+        datetime: The current UTC datetime.
+    """
+    return datetime.now(timezone.utc)
 
 
 # ============== Prompt Models ==============
@@ -208,7 +218,8 @@ class Prompt(PromptBase):
     updated_at: datetime = Field(default_factory=get_current_time)
 
     class Config:
-        from_attributes = True
+         """Configure attribute-based model creation for Prompt."""
+         from_attributes = True
 
 class PromptVersion(BaseModel):
     """A snapshot of a prompt's state before an update.
@@ -346,6 +357,7 @@ class Collection(CollectionBase):
     created_at: datetime = Field(default_factory=get_current_time)
 
     class Config:
+        """Configure attribute-based model creation for Collection."""
         from_attributes = True
 
 
@@ -360,8 +372,8 @@ class PromptList(BaseModel):
 
     Attributes:
         prompts (List[Prompt]): The prompt objects matching the
-            request's filters (e.g. collection, tags, search query),
-            sorted by most recently updated first.
+                        request's filters (e.g. collection, tags, search query),
+            sorted by most recently created first.
         total (int): The total number of prompts matching the request's
             filters.
 
@@ -439,8 +451,8 @@ class VersionList(BaseModel):
 
     Attributes:
         versions (List[PromptVersion]): The saved snapshot objects
-            representing previous states of the prompt, ordered from
-            newest to oldest.
+                        representing previous states of the prompt, ordered from
+            oldest to newest (insertion order).
         total (int): The total number of versions saved for the prompt.
 
     Example:
@@ -500,4 +512,6 @@ class HealthResponse(BaseModel):
     """
     status: str
     version: str
+
+
 

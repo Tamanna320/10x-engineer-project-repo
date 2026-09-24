@@ -75,9 +75,9 @@ def list_prompts(
     """List all prompts, with optional filtering and searching.
 
     Retrieves every stored prompt, then optionally narrows the results
-    by collection, search query, and/or tag. When several parameters
+        by collection, search query, and/or tag. When several parameters
     are provided, the filters are applied cumulatively. Results are
-    sorted by date with the most recently updated prompts first.
+    sorted by date with the most recently created prompts first.
 
     Args:
         collection_id (Optional[str]): If provided, only prompts
