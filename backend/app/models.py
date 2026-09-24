@@ -21,7 +21,7 @@ def get_current_time() -> datetime:
     Returns:
         datetime: The current UTC datetime.
     """
-    return datetime.now(timezone.utc)
+    return datetime.utcnow()
 
 
 # ============== Prompt Models ==============
