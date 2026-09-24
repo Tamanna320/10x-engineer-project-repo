@@ -48,7 +48,10 @@ promptlab/
 │   ├── tests/
 │   │   ├── __init__.py
 │   │   ├── conftest.py       # Test fixtures (test client, sample data)
-│   │   └── test_api.py       # API tests
+│   │   ├── test_api.py       # API tests
+│   │   ├── test_models.py    # Pydantic model tests
+│   │   ├── test_storage.py   # Storage layer tests
+│   │   └── test_utils.py     # Utility function tests
 │   ├── main.py               # Server entry point
 │   └── requirements.txt      # Pinned dependencies
 │
@@ -175,6 +178,7 @@ curl -X POST http://localhost:8000/prompts/<prompt-id>/test \
 | POST | `/prompts/{id}/test` | Render the template with variable values | 200 | 400, 404 |
 | GET | `/prompts/{id}/versions` | List saved versions of a prompt | 200 | 404 |
 | GET | `/prompts/{id}/versions/{n}` | Get one specific version | 200 | 404 |
+| POST | `/prompts/{id}/versions/{n}/restore` | Restore a prompt to a saved version | 200 | 400, 404, 422 |
 
 **Query parameters for `GET /prompts`** (can be combined):
 

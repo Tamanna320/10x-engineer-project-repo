@@ -646,24 +646,37 @@ refreshed.
 
 **Authentication:** None required.
 
-**\*\*curl example:\*\***
+**curl example:**
 
-\`\`\`bash
+```bash
+curl -X POST http://localhost:8000/prompts/b3f1c2a4-8d6e-4f5a-9b0c-1d2e3f4a5b6c/versions/1/restore
+```
 
-curl -X POST http\://localhost:8000/prompts/b3f1c2a4-8d6e-4f5a-9b0c-1d2e3f4a5b6c/versions/1/restore
+**Response shape:** `Prompt` (see [GET /prompts/{prompt_id}](#get-promptsprompt_id)).
 
-\`\`\`
+**Sample response — `200 OK`:**
 
-**\*\*Response shape:\*\*** \`Prompt\`.
+```json
+{
+  "id": "b3f1c2a4-8d6e-4f5a-9b0c-1d2e3f4a5b6c",
+  "title": "Marketing Email",
+  "content": "Write a {{tone}} marketing email for {{product}}.",
+  "description": "Generates marketing emails.",
+  "collection_id": "col-123",
+  "tags": ["marketing", "email"],
+  "created_at": "2025-01-15T10:30:00",
+  "updated_at": "2025-01-17T09:00:00"
+}
+```
 
-**\*\*Error status codes:\*\***
+**Error status codes:**
 
-\| Code | Reason | Detail message |
-\| ---- | ------ | -------------- |
-\| 400 | The version references a collection that no longer exists. | \`"Collection not found"\` |
-\| 404 | No prompt with that ID. | \`"Prompt not found"\` |
-\| 404 | The prompt has no version with that number. | \`"Version not found"\` |
-\| 422 | \`version\_number\` is not an integer. | (FastAPI validation error) |
+| Code | Reason | Detail message |
+| ---- | ------ | -------------- |
+| 400 | The version references a collection that no longer exists. | `"Collection not found"` |
+| 404 | No prompt with that ID. | `"Prompt not found"` |
+| 404 | The prompt has no version with that number. | `"Version not found"` |
+| 422 | `version_number` is not an integer. | (FastAPI validation error) |
 
 ---
 
