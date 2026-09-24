@@ -128,10 +128,7 @@ def get_prompt(prompt_id: str):
     Raises:
         HTTPException: 404 if no prompt exists with the given ID.
     """
-    prompt = storage.get_prompt(prompt_id)
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt not found")
-    return prompt
+    return get_prompt_or_404(prompt_id)
 
 
 @app.post("/prompts", response_model=Prompt, status_code=201)
@@ -157,10 +154,7 @@ def create_prompt(prompt_data: PromptCreate):
             collection exists with that ID.
     """
     # Validate collection exists if provided
-    if prompt_data.collection_id:
-        collection = storage.get_collection(prompt_data.collection_id)
-        if not collection:
-            raise HTTPException(status_code=400, detail="Collection not found")
+    validate_collection(prompt_data.collection_id)
     
     prompt = Prompt(**prompt_data.model_dump())
     return storage.create_prompt(prompt)
@@ -191,37 +185,22 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         HTTPException: 400 if ``collection_id`` is provided but no
             collection exists with that ID.
     """
-    existing = storage.get_prompt(prompt_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Prompt not found")
+    existing = get_prompt_or_404(prompt_id)
     
     # Validate collection if provided
-    if prompt_data.collection_id:
-        collection = storage.get_collection(prompt_data.collection_id)
-        if not collection:
-            raise HTTPException(status_code=400, detail="Collection not found")
+    validate_collection(prompt_data.collection_id)
 
-    old_version = PromptVersion(
-        version=len(storage.get_versions(prompt_id)) + 1,
-        title=existing.title,
-        content=existing.content,
-        description=existing.description,
-        collection_id=existing.collection_id,
-        tags=existing.tags,
-    )
-    storage.save_version(prompt_id, old_version)
+    save_prompt_version(existing)
 
     # Build the updated prompt with a fresh updated_at timestamp
-    updated_prompt = Prompt(
-        id=existing.id,
-        title=prompt_data.title,
-        content=prompt_data.content,
-        description=prompt_data.description,
-        collection_id=prompt_data.collection_id,
-        tags=prompt_data.tags,
-        created_at=existing.created_at,
-        updated_at=get_current_time()
-    )
+    updated_prompt = build_updated_prompt(
+      existing,
+      title=prompt_data.title,
+      content=prompt_data.content,
+      description=prompt_data.description,
+      collection_id=prompt_data.collection_id,
+      tags=prompt_data.tags,
+     )
     
     return storage.update_prompt(prompt_id, updated_prompt)
 
@@ -252,39 +231,30 @@ def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
         HTTPException: 400 if a non-null ``collection_id`` is provided
             but no collection exists with that ID.
     """
-    existing = storage.get_prompt(prompt_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Prompt not found")
-    
+    existing = get_prompt_or_404(prompt_id)
     # Keep only the fields the client actually sent
     update_data = prompt_data.model_dump(exclude_unset=True)
     
     # If collection_id is being changed, make sure the collection exists
-    if "collection_id" in update_data and update_data["collection_id"] is not None:
-        collection = storage.get_collection(update_data["collection_id"])
-        if not collection:
-            raise HTTPException(status_code=400, detail="Collection not found")
+    if "collection_id" in update_data:
+     validate_collection(update_data["collection_id"])
 
     # Save the current state as a version before overwriting
-    old_version = PromptVersion(
-        version=len(storage.get_versions(prompt_id)) + 1,
-        title=existing.title,
-        content=existing.content,
-        description=existing.description,
-        collection_id=existing.collection_id,
-        tags=existing.tags,
-    )
-    storage.save_version(prompt_id, old_version)
+    save_prompt_version(existing)
     # Build the updated prompt: new values where provided, old values otherwise
-    updated_prompt = Prompt(
-        id=existing.id,
-        title=update_data.get("title", existing.title),
-        content=update_data.get("content", existing.content),
-        description=update_data.get("description", existing.description),
-        collection_id=update_data.get("collection_id", existing.collection_id),
-        tags=update_data.get("tags", existing.tags),
-        created_at=existing.created_at,
-        updated_at=get_current_time()
+    updated_prompt = build_updated_prompt(
+      existing,
+      title=update_data.get("title", existing.title),
+      content=update_data.get("content", existing.content),
+      description=update_data.get(
+        "description",
+        existing.description,
+      ),
+      collection_id=update_data.get(
+        "collection_id",
+        existing.collection_id,
+      ),
+      tags=update_data.get("tags", existing.tags),
     )
     
     return storage.update_prompt(prompt_id, updated_prompt)
@@ -335,9 +305,7 @@ def test_prompt(prompt_id: str, test_data: PromptTestRequest):
         HTTPException: 400 if values are missing for one or more
             template variables.
     """
-    prompt = storage.get_prompt(prompt_id)
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt not found")
+    prompt = get_prompt_or_404(prompt_id)
     
     # Find all {{variables}} the template requires
     required_vars = extract_variables(prompt.content)
@@ -371,10 +339,8 @@ def list_versions(prompt_id: str):
     Raises:
         HTTPException: 404 if no prompt exists with the given ID.
     """
-    prompt = storage.get_prompt(prompt_id)
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt not found")
-    
+    get_prompt_or_404(prompt_id)
+
     versions = storage.get_versions(prompt_id)
     return VersionList(versions=versions, total=len(versions))
 
@@ -397,10 +363,8 @@ def get_prompt_version(prompt_id: str, version_number: int):
         HTTPException: 404 if no prompt exists with the given ID, or
             if the prompt has no version with the given number.
     """
-    prompt = storage.get_prompt(prompt_id)
-    if not prompt:
-                raise HTTPException(status_code=404, detail="Prompt not found")
-    
+    get_prompt_or_404(prompt_id)
+
     version = storage.get_version(prompt_id, version_number)
     if not version:
         raise HTTPException(status_code=404, detail="Version not found")
@@ -435,9 +399,7 @@ def restore_prompt_version(prompt_id: str, version_number: int):
             references a collection that no longer exists.
     """
     # 1. Verify the prompt exists
-    existing = storage.get_prompt(prompt_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Prompt not found")
+    existing = get_prompt_or_404(prompt_id)
 
     # 2. Verify the version exists
     version = storage.get_version(prompt_id, version_number)
@@ -445,30 +407,22 @@ def restore_prompt_version(prompt_id: str, version_number: int):
         raise HTTPException(status_code=404, detail="Version not found")
 
     # 3. Validate the version's collection_id still exists (if set)
-    if version.collection_id is not None and not storage.get_collection(version.collection_id):
-            raise HTTPException(status_code=400, detail="Collection not found")
+    validate_collection(version.collection_id)
 
     # 4. Snapshot the current state before restoring
-    storage.save_version(prompt_id, PromptVersion(
-        version=len(storage.get_versions(prompt_id)) + 1,
-        title=existing.title,
-        content=existing.content,
-        description=existing.description,
-        collection_id=existing.collection_id,
-        tags=existing.tags,
-    ))
+    save_prompt_version(existing)
 
     # 5. Build and persist the restored prompt
-    return storage.update_prompt(prompt_id, Prompt(
-        id=existing.id,
-        title=version.title,
-        content=version.content,
-        description=version.description,
-        collection_id=version.collection_id,
-        tags=version.tags,
-        created_at=existing.created_at,
-        updated_at=get_current_time()
-    ))
+    restored_prompt = build_updated_prompt(
+    existing,
+    title=version.title,
+    content=version.content,
+    description=version.description,
+    collection_id=version.collection_id,
+    tags=version.tags,
+    )
+
+    return storage.update_prompt(prompt_id, restored_prompt)
 
 # ============== Collection Endpoints ==============
 
@@ -556,3 +510,59 @@ def delete_collection(collection_id: str):
     # Now it's safe to delete the collection
     storage.delete_collection(collection_id)
 
+def get_prompt_or_404(prompt_id: str) -> Prompt:
+    """Retrieve a prompt or raise a 404 error."""
+    prompt = storage.get_prompt(prompt_id)
+
+    if not prompt:
+        raise HTTPException(
+            status_code=404,
+            detail="Prompt not found",
+        )
+
+    return prompt
+
+def validate_collection(collection_id: str | None) -> None:
+    """Validate that a collection exists when an ID is provided."""
+    if collection_id is None:
+        return
+
+    if not storage.get_collection(collection_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Collection not found",
+        )
+
+def save_prompt_version(prompt: Prompt) -> None:
+    """Save the current prompt state as a new version."""
+    version = PromptVersion(
+        version=len(storage.get_versions(prompt.id)) + 1,
+        title=prompt.title,
+        content=prompt.content,
+        description=prompt.description,
+        collection_id=prompt.collection_id,
+        tags=prompt.tags,
+    )
+
+    storage.save_version(prompt.id, version)    
+
+def build_updated_prompt(
+    existing: Prompt,
+    *,
+    title: str,
+    content: str,
+    description: str | None,
+    collection_id: str | None,
+    tags: list[str],
+) -> Prompt:
+    """Build an updated prompt while preserving immutable fields."""
+    return Prompt(
+        id=existing.id,
+        title=title,
+        content=content,
+        description=description,
+        collection_id=collection_id,
+        tags=tags,
+        created_at=existing.created_at,
+        updated_at=get_current_time(),
+    )    
