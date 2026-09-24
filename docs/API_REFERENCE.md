@@ -22,6 +22,7 @@
     - [POST /prompts/{prompt_id}/test](#post-promptsprompt_idtest)
     - [GET /prompts/{prompt_id}/versions](#get-promptsprompt_idversions)
     - [GET /prompts/{prompt_id}/versions/{version_number}](#get-promptsprompt_idversionsversion_number)
+    - [POST /prompts/{prompt_id}/versions/{version_number}/restore](#post-promptsprompt_idversionsversion_numberrestore)
   - [Collections](#collections)
     - [GET /collections](#get-collections)
     - [GET /collections/{collection_id}](#get-collectionscollection_id)
@@ -627,8 +628,46 @@ curl http://localhost:8000/prompts/b3f1c2a4-8d6e-4f5a-9b0c-1d2e3f4a5b6c/versions
 
 ---
 
-### Collections
+#### POST /prompts/{prompt_id}/versions/{version_number}/restore
 
+Restore a prompt to the state captured by a specific version.
+
+Before restoring, the prompt's current state is saved as a new version.
+
+The prompt's `id` and `created_at` are preserved, while `updated_at` is
+refreshed.
+
+**Path parameters:**
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `prompt_id` | string | Yes | The prompt's unique ID. |
+| `version_number` | integer | Yes | The version number to restore. |
+
+**Authentication:** None required.
+
+**\*\*curl example:\*\***
+
+\`\`\`bash
+
+curl -X POST http\://localhost:8000/prompts/b3f1c2a4-8d6e-4f5a-9b0c-1d2e3f4a5b6c/versions/1/restore
+
+\`\`\`
+
+**\*\*Response shape:\*\*** \`Prompt\`.
+
+**\*\*Error status codes:\*\***
+
+\| Code | Reason | Detail message |
+\| ---- | ------ | -------------- |
+\| 400 | The version references a collection that no longer exists. | \`"Collection not found"\` |
+\| 404 | No prompt with that ID. | \`"Prompt not found"\` |
+\| 404 | The prompt has no version with that number. | \`"Version not found"\` |
+\| 422 | \`version\_number\` is not an integer. | (FastAPI validation error) |
+
+---
+
+### Collections
 #### GET /collections
 
 List all collections.
@@ -806,7 +845,8 @@ curl -X DELETE http://localhost:8000/collections/col-123
 | DELETE | `/prompts/{prompt_id}`                        | Delete a prompt and its version history.     | 204            |
 | POST   | `/prompts/{prompt_id}/test`                   | Render the template with test variables.     | 200            |
 | GET    | `/prompts/{prompt_id}/versions`               | List a prompt's version history.             | 200            |
-| GET    | `/prompts/{prompt_id}/versions/{version_number}` | Get one saved version.                    | 200            |
+| GET    | `/prompts/{prompt_id}/versions/{version_number}` | Get one saved version. | 200 |
+| POST   | `/prompts/{prompt_id}/versions/{version_number}/restore` | Restore a prompt to a saved version. | 200 |        |
 | GET    | `/collections`                                | List all collections.                        | 200            |
 | GET    | `/collections/{collection_id}`                | Get one collection.                          | 200            |
 | POST   | `/collections`                                | Create a collection.                         | 201            |
