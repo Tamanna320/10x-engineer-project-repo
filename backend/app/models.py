@@ -490,6 +490,33 @@ class CollectionList(BaseModel):
     total: int
 
 
+class TagCount(BaseModel):
+    """One distinct tag and how many prompts use it.
+
+    Attributes:
+        tag (str): The distinct tag string, stored verbatim (no
+            normalization, trimming, or casing applied on write).
+        count (int): The number of distinct prompts carrying this tag.
+            A prompt with the same tag listed more than once is counted
+            once.
+    """
+    tag: str
+    count: int
+
+
+class TagList(BaseModel):
+    """All distinct tags with usage counts.
+
+    Attributes:
+        tags (List[TagCount]): Every distinct tag across all prompts with
+            its usage count, sorted by tag ascending
+            (lexicographic/Unicode code-point order).
+        total (int): The number of distinct tags.
+    """
+    tags: list[TagCount]
+    total: int
+
+
 class HealthResponse(BaseModel):
     """Service health status returned by the health check endpoint.
 

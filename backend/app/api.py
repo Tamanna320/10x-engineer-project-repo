@@ -18,14 +18,18 @@ from app.models import (
     PromptTestResponse,
     PromptUpdate,
     PromptVersion,
+    TagCount,
+    TagList,
     VersionList,
     get_current_time,
 )
 from app.storage import storage
 from app.utils import (
+    count_tags,
     extract_variables,
     filter_prompts_by_collection,
     filter_prompts_by_tag,
+    filter_prompts_by_tags,
     render_prompt,
     search_prompts,
     sort_prompts_by_date,
@@ -70,14 +74,23 @@ def health_check():
 def list_prompts(
     collection_id: str | None = None,
     search: str | None = None,
-    tag: str | None = None
+    tag: str | None = None,
+    tags: str | None = None,
 ):
     """List all prompts, with optional filtering and searching.
 
     Retrieves every stored prompt, then optionally narrows the results
-        by collection, search query, and/or tag. When several parameters
-    are provided, the filters are applied cumulatively. Results are
-    sorted by date with the most recently created prompts first.
+        by collection, search query, and/or tags. When several parameters
+    are provided, the filters are applied cumulatively (AND) in the
+    order: ``collection_id`` → ``search`` → ``tag`` → ``tags``, then
+    results are sorted by date with the most recently created prompts
+    first.
+
+    The ``tags`` parameter is a comma-separated list. Parsing strips
+    whitespace around each segment, drops empty segments, and removes
+    duplicate tags; a prompt matches if it carries at least one of the
+    parsed tags (ANY). If parsing yields no tags, the parameter is
+    ignored (no filtering).
 
     Args:
         collection_id (Optional[str]): If provided, only prompts
@@ -85,7 +98,10 @@ def list_prompts(
         search (Optional[str]): If provided, only prompts matching this
             search query are returned.
         tag (Optional[str]): If provided, only prompts carrying this
-            tag are returned.
+            single tag are returned (exact, case-sensitive).
+        tags (Optional[str]): If provided, a comma-separated list of
+            tags; prompts carrying at least one of them are returned
+            (exact, case-sensitive, ANY). Combined with ``tag`` as AND.
 
     Returns:
         PromptList: An object containing the matching ``Prompt``
@@ -104,8 +120,20 @@ def list_prompts(
 
      # Filter by tag if specified
     if tag:
-        prompts = filter_prompts_by_tag(prompts, tag)    
-    
+        prompts = filter_prompts_by_tag(prompts, tag)
+
+    # Filter by multiple tags if specified (ANY match; AND with the rest)
+    if tags:
+        parsed: list[str] = []
+        seen: set[str] = set()
+        for segment in tags.split(","):
+            stripped = segment.strip()
+            if stripped and stripped not in seen:
+                seen.add(stripped)
+                parsed.append(stripped)
+        if parsed:
+            prompts = filter_prompts_by_tags(prompts, parsed)
+
     # Sort by date (newest first)
     prompts = sort_prompts_by_date(prompts, descending=True)
     
@@ -423,6 +451,29 @@ def restore_prompt_version(prompt_id: str, version_number: int):
     )
 
     return storage.update_prompt(prompt_id, restored_prompt)
+
+# ============== Tag Endpoints ==============
+
+@app.get("/tags", response_model=TagList)
+def list_tags():
+    """List every distinct tag across all prompts with usage counts.
+
+    Retrieves all stored prompts and counts how many distinct prompts
+    use each tag. A prompt with the same tag listed more than once is
+    counted once per tag. The returned tags are sorted ascending
+    (lexicographic/Unicode code-point order), and ``total`` is the
+    number of distinct tags. Because counts are derived live from
+    stored prompts, deleting a prompt immediately removes its
+    contribution from these counts.
+
+    Returns:
+        TagList: An object containing the distinct ``TagCount`` entries
+            (sorted by tag ascending) and ``total``, the number of
+            distinct tags.
+    """
+    counts = count_tags(storage.get_all_prompts())
+    tag_items = [TagCount(tag=t, count=c) for t, c in sorted(counts.items())]
+    return TagList(tags=tag_items, total=len(tag_items))
 
 # ============== Collection Endpoints ==============
 

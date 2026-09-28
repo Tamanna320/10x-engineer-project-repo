@@ -60,6 +60,52 @@ def filter_prompts_by_tag(prompts: list[Prompt], tag: str) -> list[Prompt]:
     """
     return [p for p in prompts if tag in p.tags]
 
+def filter_prompts_by_tags(prompts: list[Prompt], tags: list[str]) -> list[Prompt]:
+    """Keep prompts carrying at least one of the given tags.
+
+    Matching is an exact, case-sensitive membership test: a prompt is
+    kept if any of the given tags appears in its ``tags`` list (ANY
+    semantics). This composes with the single ``tag`` filter as a
+    cumulative AND when both are applied.
+
+    Args:
+        prompts: The prompts to filter.
+        tags: The tags to match. A prompt is kept if it carries at
+            least one of these tags.
+
+    Returns:
+        A new list containing only prompts that carry at least one of
+        the given tags. Empty if no prompts match.
+
+    Examples:
+        >>> filter_prompts_by_tags(prompts, ["beginner", "advanced"])
+    """
+    return [p for p in prompts if any(t in p.tags for t in tags)]
+
+
+def count_tags(prompts: list[Prompt]) -> dict[str, int]:
+    """Map each distinct tag to the number of distinct prompts using it.
+
+    Each prompt contributes at most one count per tag, even if the tag
+    appears multiple times in that prompt's ``tags`` list (duplicate tags
+    on one prompt count once). Tags are not normalized.
+
+    Args:
+        prompts: The prompts to tally tags across.
+
+    Returns:
+        A mapping of each distinct tag to the number of distinct
+        prompts carrying it. Empty if no prompts have tags.
+
+    Examples:
+        >>> count_tags(prompts)
+    """
+    counts: dict[str, int] = {}
+    for p in prompts:
+        for t in set(p.tags):  # duplicate tags on one prompt count once
+            counts[t] = counts.get(t, 0) + 1
+    return counts
+
 def search_prompts(prompts: list[Prompt], query: str) -> list[Prompt]:
     """Search prompts by title or description (case-insensitive).
 
