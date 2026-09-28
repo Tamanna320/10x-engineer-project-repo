@@ -559,7 +559,153 @@ class TestRestore:
         assert response1.status_code == 200
         assert client.get(f"/prompts/{prompt_id}/versions").json()["total"] == 2
 
-        # Second restore of version 1
+                # Second restore of version 1
         response2 = client.post(f"/prompts/{prompt_id}/versions/1/restore")
         assert response2.status_code == 200
         assert client.get(f"/prompts/{prompt_id}/versions").json()["total"] == 3
+
+
+class TestTags:
+    """Tests for the tagging system (specs/tagging-system.md).
+
+    These tests follow the spec in specs/tagging-system.md (AC-3.1 through
+    AC-4.3 and E-4, E-6). They are expected to FAIL until the multi-tag
+    filtering (``tags`` query parameter) and ``GET /tags`` features are
+    implemented in app/api.py, app/models.py, and app/utils.py.
+    """
+
+    # Shared A/B/C scenario used by the acceptance criteria, created in order.
+    SCENARIO = [
+        {"title": "Python Basics", "content": "Content A here", "tags": ["python", "beginner"]},
+        {"title": "Advanced Python", "content": "Content B here", "tags": ["python", "advanced"]},
+        {"title": "Pasta Recipe", "content": "Content C here", "tags": ["cooking"]},
+    ]
+
+    def _create_scenario(self, client: TestClient) -> list[dict]:
+        """Create the shared A/B/C scenario and return the created prompts.
+
+        Args:
+            client: The FastAPI test client.
+
+        Returns:
+            A list of the created prompt dicts (A, B, C) in creation order.
+        """
+        created = []
+        for data in self.SCENARIO:
+            response = client.post("/prompts", json=data)
+            assert response.status_code == 201
+            created.append(response.json())
+        return created
+
+    # ---- AC-3.1: Filter by multiple tags (ANY) ----
+
+    def test_filter_prompts_by_multiple_tags(self, client: TestClient):
+        """GET /prompts?tags=beginner,advanced returns prompts matching ANY tag."""
+        self._create_scenario(client)
+
+        response = client.get("/prompts", params={"tags": "beginner,advanced"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        titles = {p["title"] for p in data["prompts"]}
+        assert titles == {"Python Basics", "Advanced Python"}
+
+    # ---- AC-3.2: tag AND tags combine (AND) ----
+
+    def test_filter_prompts_by_tag_and_tags_combined(self, client: TestClient):
+        """GET /prompts?tag=python&tags=beginner narrows to Python Basics only."""
+        self._create_scenario(client)
+
+        response = client.get("/prompts", params={"tag": "python", "tags": "beginner"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["prompts"][0]["title"] == "Python Basics"
+
+    # ---- AC-3.3: tags matching nothing ----
+
+    def test_filter_prompts_by_tags_no_match(self, client: TestClient):
+        """GET /prompts?tags=nonexistent returns 200 with no prompts."""
+        self._create_scenario(client)
+
+        response = client.get("/prompts", params={"tags": "nonexistent"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 0
+        assert data["prompts"] == []
+
+    # ---- AC-4.1: GET /tags with usage counts ----
+
+    def test_list_tags_with_usage_counts(self, client: TestClient):
+        """GET /tags lists every distinct tag with usage counts, sorted ascending."""
+        self._create_scenario(client)
+
+        response = client.get("/tags")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 4
+        assert data["tags"] == [
+            {"tag": "advanced", "count": 1},
+            {"tag": "beginner", "count": 1},
+            {"tag": "cooking", "count": 1},
+            {"tag": "python", "count": 2},
+        ]
+
+    # ---- AC-4.2: GET /tags with no prompts ----
+
+    def test_list_tags_empty(self, client: TestClient):
+        """GET /tags with no prompts stored returns an empty tag list."""
+        response = client.get("/tags")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["tags"] == []
+        assert data["total"] == 0
+
+    # ---- AC-4.3: deleting a prompt updates GET /tags ----
+
+    def test_list_tags_after_prompt_deleted(self, client: TestClient):
+        """Deleting a prompt removes its now-unused tags from GET /tags."""
+        created = self._create_scenario(client)
+        prompt_b_id = created[1]["id"]  # Advanced Python
+
+        delete_response = client.delete(f"/prompts/{prompt_b_id}")
+        assert delete_response.status_code == 204
+
+        response = client.get("/tags")
+        assert response.status_code == 200
+        data = response.json()
+        tags = {t["tag"]: t["count"] for t in data["tags"]}
+        assert tags == {"python": 1, "beginner": 1, "cooking": 1}
+        assert "advanced" not in tags
+        assert data["total"] == 3
+
+    # ---- E-4: whitespace and empty segments in the tags query ----
+
+    def test_filter_prompts_by_tags_strips_whitespace_and_empty_segments(
+        self, client: TestClient
+    ):
+        """tags=' beginner ,,advanced' is equivalent to tags=beginner,advanced."""
+        self._create_scenario(client)
+
+        response = client.get("/prompts", params={"tags": " beginner ,,advanced"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        titles = {p["title"] for p in data["prompts"]}
+        assert titles == {"Python Basics", "Advanced Python"}
+
+    # ---- E-6: duplicate tags on one prompt counted once by GET /tags ----
+
+    def test_list_tags_counts_duplicate_tag_once(self, client: TestClient):
+        """A prompt with ["python", "python"] contributes count 1 for python."""
+        client.post("/prompts", json={
+            "title": "Dup",
+            "content": "Dup content here",
+            "tags": ["python", "python"],
+        })
+
+        response = client.get("/tags")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["tags"] == [{"tag": "python", "count": 1}]
