@@ -1,0 +1,58 @@
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.message {
+  margin: 0;
+  font-size: 15px;
+  line-height: 145%;
+}
+
+.retryButton {
+  flex: 0 0 auto;
+  padding: 8px 18px;
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  background: #ef4444;
+  color: #fff;
+}
+
+.retryButton:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.retryButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+@media (max-width: 768px) {
+  .banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .retryButton {
+    width: 100%;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .banner {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+  }
+}

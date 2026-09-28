@@ -1,0 +1,57 @@
+.message {
+  margin: 0 0 20px 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 145%;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cancelButton,
+.confirmButton {
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.cancelButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.confirmButton {
+  border-color: #ef4444;
+  background: #ef4444;
+  color: #fff;
+}
+
+.confirmButton:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.cancelButton:focus-visible,
+.confirmButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+@media (max-width: 768px) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .cancelButton,
+  .confirmButton {
+    width: 100%;
+  }
+}
