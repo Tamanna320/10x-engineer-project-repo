@@ -3,6 +3,7 @@
   flex-direction: column;
   min-height: 100svh;
   text-align: left;
+  background: var(--bg);
 }
 
 .body {
@@ -13,12 +14,16 @@
 
 .content {
   flex: 1;
-  padding: 24px;
+  padding: var(--space-6);
   overflow-y: auto;
   min-width: 0;
 }
 
 @media (max-width: 768px) {
+  .content {
+    padding: var(--space-4);
+  }
+
   .body {
     flex-direction: column;
   }

@@ -1,7 +1,7 @@
 .bar {
   display: flex;
-  gap: 16px;
-  padding: 16px 0;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
@@ -9,37 +9,45 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   flex: 1;
   min-width: 160px;
 }
 
 .label {
-  font-size: 14px;
-  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .input,
 .select {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
   color: var(--text-h);
   font: inherit;
-  font-size: 16px;
+  font-size: 0.95rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
 }
 
 .input:focus,
 .select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-bg);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 @media (max-width: 768px) {
   .bar {
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-3);
   }
 }

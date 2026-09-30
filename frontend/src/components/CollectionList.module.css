@@ -1,10 +1,10 @@
 .list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
   list-style: none;
   margin: 0;
-  padding: 16px 0;
+  padding: var(--space-4) 0;
 }
 
 .item {
@@ -14,52 +14,68 @@
 .card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--space-3);
+  padding: var(--space-5);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
   height: 100%;
   box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
 }
 
 .header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .name {
   margin: 0;
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 1.2rem;
+  font-weight: 600;
   color: var(--text-h);
+  line-height: 130%;
 }
 
 .deleteButton {
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 15px;
+  font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
-  background: var(--bg);
+  background: var(--surface-2);
   color: var(--text);
   flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .deleteButton:hover {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--error-border);
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.deleteButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-border);
 }
 
 .description {
   margin: 0;
   color: var(--text);
-  font-size: 15px;
+  font-size: 0.9rem;
+  line-height: 150%;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;

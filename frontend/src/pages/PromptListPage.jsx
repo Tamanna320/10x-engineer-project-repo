@@ -9,6 +9,7 @@ import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import Button from "../components/Button.jsx";
 import { getPrompts, deletePrompt } from "../api/prompts.js";
 import { getCollections } from "../api/collections.js";
+import styles from "./PromptListPage.module.css";
 
 /**
  * Prompt List page.
@@ -150,9 +151,19 @@ function PromptListPage() {
   const handleViewCollections = () => {
     navigate("/collections");
   };
-
+ 
   return (
-    <div>
+    <div className={styles.page}>
+      <div className={styles.pageHeader}>
+        <h1 className={styles.heading}>Prompts</h1>
+        <div className={styles.headerActions}>
+          <Button variant="secondary" onClick={handleViewCollections}>
+            Collections
+          </Button>
+        <Button onClick={handleCreatePrompt}>New Prompt</Button>
+      </div>
+    </div>
+
       <SearchFilterBar
         search={filters.search}
         collectionId={filters.collectionId}
@@ -160,17 +171,6 @@ function PromptListPage() {
         collections={collections}
         onChange={handleFilterChange}
       />
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: "1rem",
-        }}
-      >
-        <Button onClick={handleViewCollections}>Collections</Button>
-        <Button onClick={handleCreatePrompt}>New Prompt</Button>
-      </div>
 
       {deleteError && <ErrorBanner message={deleteError} />}
 
@@ -210,5 +210,4 @@ function PromptListPage() {
 }
 
 export default PromptListPage;
-
 

@@ -3,45 +3,49 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  min-height: 160px;
-  padding: 32px 24px;
+  gap: var(--space-4);
+  min-height: 200px;
+  padding: var(--space-8) var(--space-6);
   text-align: center;
 }
 
 .icon {
-  width: 40px;
-  height: 40px;
-  color: var(--border);
+  width: 44px;
+  height: 44px;
+  color: var(--text-muted);
+  opacity: 0.5;
   flex: 0 0 auto;
 }
 
 .message {
   margin: 0;
-  font-size: 16px;
-  line-height: 145%;
+  font-size: 0.95rem;
+  line-height: 150%;
   color: var(--text);
   max-width: 460px;
 }
 
 .actionButton {
   flex: 0 0 auto;
-  margin-top: 4px;
-  padding: 8px 18px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius);
   font: inherit;
-  font-size: 15px;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
-  background: transparent;
+  background: var(--accent-bg);
   color: var(--accent);
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .actionButton:hover {
-  background: var(--accent-bg);
+  background: var(--surface-hover);
+  border-color: var(--accent);
 }
 
 .actionButton:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-bg);
+  box-shadow: 0 0 0 2px var(--accent-border), 0 0 0 4px var(--bg);
 }

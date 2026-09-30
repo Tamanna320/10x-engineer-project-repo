@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import CollectionList from "../components/CollectionList.jsx";
 import CollectionForm from "../components/CollectionForm.jsx";
 import ErrorBanner from "../components/ErrorBanner.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
-import Button from "../components/Button.jsx";
 import { getCollections, createCollection, deleteCollection } from "../api/collections.js";
 
 /**
@@ -26,12 +24,7 @@ import { getCollections, createCollection, deleteCollection } from "../api/colle
  * @returns {JSX.Element} The Collection List page.
  */
 function CollectionListPage() {
-  const navigate = useNavigate();
-
-  const handleBackToPrompts = () => {
-    navigate("/prompts");
-  };
-
+  
   const [collections, setCollections] = useState([]);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -129,7 +122,6 @@ function CollectionListPage() {
           marginBottom: "1rem",
         }}
       >
-        <Button onClick={handleBackToPrompts}>Back to Prompts</Button>
       </div>
 
       {deleteError && <ErrorBanner message={deleteError} />}
