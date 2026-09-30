@@ -6,7 +6,9 @@ import styles from "./TagInput.module.css";
  *
  * Renders a text input where the user types tags separated by commas.
  * When a comma is entered, the text before it is added as a tag. The
- * Enter key also adds the current input as a tag. Each tag has a
+ * Enter key also adds the current input as a tag. Blurring the input
+ * (e.g. by clicking the form's Save button) also commits any pending
+ * text, so a tag typed but not delimited is not lost. Each tag has a
  * remove button. Tags are preserved exactly as entered — no
  * lowercasing or deduplication is applied. Only delimiter whitespace
  * around commas is stripped, as part of standard comma-separated
@@ -56,6 +58,17 @@ function TagInput({ tags, onChange }) {
     }
   };
 
+  // Commit any pending text as a tag when the input loses focus (e.g.
+  // the user clicks the form's Save button), so a tag typed but not
+  // delimited with Enter or a comma is not lost on submit.
+  const handleBlur = () => {
+    const trimmed = input.trim();
+    if (trimmed) {
+      onChange([...tags, trimmed]);
+      setInput("");
+    }
+  };
+
   const handleRemoveTag = (index) => {
     onChange(tags.filter((_, i) => i !== index));
   };
@@ -86,6 +99,7 @@ function TagInput({ tags, onChange }) {
         value={input}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
         placeholder="Add tags (comma-separated)..."
         aria-label="Add tag"
       />
@@ -94,3 +108,4 @@ function TagInput({ tags, onChange }) {
 }
 
 export default TagInput;
+

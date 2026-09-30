@@ -22,11 +22,21 @@ import styles from "./PromptDetail.module.css";
  * @param {string[]} props.prompt.tags - Tags for categorization.
  * @param {string} props.prompt.created_at - ISO timestamp of creation.
  * @param {string} props.prompt.updated_at - ISO timestamp of last update.
+ * @param {string} [props.collectionName] - Optional resolved
+ *   human-readable name of the prompt's collection. When the prompt
+ *   has a `collection_id` but this is not provided (or the collection
+ *   could not be resolved), the `collection_id` is shown as a
+ *   fallback.
  * @returns {JSX.Element} The prompt detail view.
  */
-function PromptDetail({ prompt }) {
+function PromptDetail({ prompt, collectionName }) {
   const created = new Date(prompt.created_at).toLocaleString();
   const updated = new Date(prompt.updated_at).toLocaleString();
+
+  // Prefer the resolved collection name; fall back to the raw id when
+  // the name is unavailable (e.g. the collections fetch failed). When
+  // the prompt has no collection, "None" is shown below.
+  const collectionLabel = collectionName || prompt.collection_id;
 
   return (
     <article className={styles.detail}>
@@ -64,7 +74,7 @@ function PromptDetail({ prompt }) {
               to={`/collections`}
               className={styles.collectionLink}
             >
-              {prompt.collection_id}
+              {collectionLabel}
             </Link>
           ) : (
             <span className={styles.metaValue}>None</span>
@@ -95,3 +105,4 @@ function PromptDetail({ prompt }) {
 }
 
 export default PromptDetail;
+
