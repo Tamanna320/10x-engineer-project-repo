@@ -110,7 +110,8 @@ The API is now available at `http://localhost:8000`.
 ### 6. Backend deployment configuration
 
 The backend has no external configuration files, no database, and no
-required environment variables. All settings are code-level defaults:
+application-level environment variables. All application settings are
+code-level defaults:
 
 | Setting | Value | Location |
 |---------|-------|----------|
@@ -185,14 +186,25 @@ The frontend is a standard Vite SPA. After `npm run build`, the
 > **Important - SPA fallback:** The frontend uses client-side routing
 > (React Router). The host must serve `index.html` for all routes
 > that do not match a static file, otherwise deep links like
-> `/prompts/123` will return a 404. On Render Static Sites this is
-> handled automatically. With nginx, add:
+> `/prompts/123` will return a 404. With nginx, add:
 >
 > ```nginx
 > location / {
 >   try_files $uri $uri/ /index.html;
 > }
 > ```
+>
+> On Render Static Sites, configure a redirect rule in the dashboard:
+>
+> | Field | Value |
+> |------|-------|
+> | **Source** | `/*` |
+> | **Destination** | `/index.html` |
+> | **Action** | **Rewrite** |
+>
+> This rewrite is required so that direct or deep links such as
+> `/prompts/123` continue to work when the page is refreshed or
+> opened directly in the browser.
 
 ---
 
@@ -204,8 +216,11 @@ PromptLab requires exactly **one** environment variable:
 |----------|-------|----------|---------|-------------|
 | `VITE_API_BASE_URL` | Frontend (build-time) | Yes for deployment | `http://localhost:8000` | The public URL of the backend API |
 
-The backend requires **no** environment variables. It has no database
-URL, no API keys, and no authentication secrets.
+The backend application requires **no** environment variables. It has
+no database URL, no API keys, and no authentication secrets. The only
+Render-specific variable is `PYTHON_VERSION`, which is a Render runtime
+configuration (see [section 13](#13-primary-deployment---render)), not
+an application variable.
 
 ### 11. Where VITE_API_BASE_URL is configured
 
@@ -279,12 +294,8 @@ PromptLab currently has **no secrets or credentials**:
 
 #### `.env` files and `.gitignore`
 
-The repository includes a `.gitignore` in `frontend/` with the
-pattern `*.local`. **This alone does not ignore `.env` files** - it
-only matches files ending in `.local` (e.g. `.env.local`).
-
-To properly prevent `.env` files from being committed, add the
-following to `frontend/.gitignore` (or create a root `.gitignore`):
+The repository's `frontend/.gitignore` already contains the following
+rules:
 
 ```gitignore
 .env
@@ -292,15 +303,17 @@ following to `frontend/.gitignore` (or create a root `.gitignore`):
 !.env.example
 ```
 
-This ignores `.env`, `.env.production`, `.env.local`, etc., while
-keeping `.env.example` tracked so other developers can discover the
-required variable.
+These rules ignore `.env` and all environment-specific variants
+(`.env.local`, `.env.production`, etc.) so they are never committed
+accidentally. The `!.env.example` negation keeps `.env.example`
+tracked so other developers can discover the required variable.
 
-No `.env` file should ever be committed to the repository. Only
+**`.env` files must never be committed to the repository.** Only
 `.env.example` (which contains no secrets) is committed.
 
 If authentication or a database is added in the future, secrets
-should be provided via environment variables and **never** committed.
+should be supplied through environment variables or the hosting
+platform's secret management - **never** committed to the repository.
 
 ---
 
@@ -317,14 +330,26 @@ in either order.
 |---------|-------|
 | **Service type** | Web Service |
 | **Root directory** | `backend` |
-| **Runtime** | Python 3.10+ |
+| **Runtime** | Python |
+| **Python version** | 3.12.11 |
 | **Build command** | `pip install -r requirements.txt` |
 | **Start command** | `uvicorn app.api:app --host 0.0.0.0 --port $PORT` |
-| **Environment variables** | None required |
+
+#### Backend environment variables
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `PYTHON_VERSION` | `3.12.11` | Render backend runtime configuration - tells Render which Python version to use for the build and runtime |
 
 Render injects `$PORT` automatically. The start command uses
 `app.api:app` (the ASGI application object), not `main:app` (which is
 a local dev entry point with `reload=True`).
+
+> **Note:** `PYTHON_VERSION` is a Render runtime configuration
+> variable for the backend service. It is unrelated to
+> `VITE_API_BASE_URL`, which is the frontend application environment
+> variable that tells the SPA where the backend API is hosted. These
+> two variables are set on different Render services.
 
 ### Frontend - Render Static Site
 
@@ -340,9 +365,9 @@ Set `VITE_API_BASE_URL` in the Render dashboard under the static
 site's **Environment** > **Environment Variables**. Render injects it
 at build time so Vite can inline it into the bundle.
 
-Render Static Sites automatically serve `index.html` for unknown
-routes, so React Router deep links (e.g. `/prompts/123`) work without
-additional SPA fallback configuration.
+For React Router deep links to work on Render Static Sites, configure
+a rewrite rule as described in [section 9](#9-frontend-deployment-configuration)
+(Source: `/*`, Destination: `/index.html`, Action: Rewrite).
 
 ---
 
